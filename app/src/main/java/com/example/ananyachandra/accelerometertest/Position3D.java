@@ -1,5 +1,7 @@
 package com.example.ananyachandra.accelerometertest;
 
+import android.os.Handler;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,7 +17,13 @@ public class Position3D {
     float y;
     float z;
 
+    float currV;
     float prevV;
+
+    int direction = 0;
+    boolean isFollowUp = false;
+
+    Handler directionChangeHandler = new Handler();
 
     ArrayList<Float> last10msAccList = new ArrayList<>(); //a of last ten 0.01s iterations
     int counter = 0;
@@ -23,20 +31,20 @@ public class Position3D {
 
     ArrayList<Float> accsOfLast5Iterations = new ArrayList<>(); //last 5 avg_a of each 0.1s iteration
 
-    float THRESHOLD = 0.3f;
+    float ACC_THRESHOLD = 0.5f;
 
     public Position3D() {
         x = 0;
         y = 0;
         z = 0;
-        prevV = 0;
+        currV = 0;
     }
 
     public void updateParameters(float a, float t) {
         //every 0.01s
         last10msAccList.add(a);
 
-//        System.out.println("a: " + avg_a + "\t v: " + prevV);
+//        System.out.println("a: " + avg_a + "\t v: " + currV);
 
         if(counter == 10) {
             updateAllowed = true;
@@ -49,34 +57,55 @@ public class Position3D {
             updateAllowed = false;
             float thisIterationA = getMedianAcceleration(last10msAccList); //avg a of last 10 0.01 iterations
 
-            prevV = 0.1f;
+//            currV = 0.3f;
 
             accsOfLast5Iterations.add(thisIterationA);
 
             // thisIterationA = smoothening algo
             thisIterationA = getGuassianAcceleration(accsOfLast5Iterations);
-            //System.out.println("a: " + thisIterationA + "\t\t v: " + prevV);
+            //System.out.println("a: " + thisIterationA + "\t\t v: " + currV);
 
-            if (!(fallInThreshold(thisIterationA))) {
-                //System.out.println("a: " + thisIterationA + "\t\t v: " + prevV);
+            if (!(fallInThreshold(thisIterationA, ACC_THRESHOLD))) {
+//                System.out.println("a: " + thisIterationA + "\t\t v: " + currV);
                 float s = 0;
-//                s = prevV * t + 0.5f * thisIterationA * t * t;
+//                s = currV * t + 0.5f * thisIterationA * t * t;
 
                 if (thisIterationA > 0) {
-                    s = prevV * t;
+                    if (direction == -1) {
+                        isFollowUp = true;
+                    }
+                    if(!isFollowUp) {
+                        direction = 1;
+//                        System.out.println("a: " + thisIterationA + "\t\t +ve");
+                        s = currV * t;
+//                        s = currV * t + 0.5f * thisIterationA * t * t;
+                    }
                 } else if (thisIterationA < 0){
-                    s = -1*prevV * t;
+                    if (direction == 1) {
+                        isFollowUp = true;
+                    }
+                    if(!isFollowUp) {
+                        direction = -1;
+//                        System.out.println("a: " + thisIterationA + "\t\t -ve");
+                        s = currV * t;
+//                        s = currV * t + 0.5f * thisIterationA * t * t;
+                    }
                 }
 
                 x += s;
+                System.out.println("X: " + x * 100);
 
-//                prevV = prevV + thisIterationA * t;
+                prevV = currV;
+                currV = currV + thisIterationA * t;
+//                System.out.println("prevV: " + prevV + "\t\t currV: " + currV + "\t\t bool: " + velocityChangedDirection(prevV, currV));
+                if (velocityChangedDirection(prevV, currV))
+                    isFollowUp = false;
 
             } else if (allAccFallingInThreshold(accsOfLast5Iterations)) {
-                prevV = 0;
+                currV = 0;
+                direction = 0;
+                isFollowUp = false;
             }
-
-            System.out.println("X: " + x * 100);
 
             if(accsOfLast5Iterations.size() == 5) {
                 accsOfLast5Iterations.remove(0);
@@ -88,19 +117,34 @@ public class Position3D {
         }
     }
 
+    Runnable directionChangeRunnable = new Runnable() {
+        @Override
+        public void run() {
+
+        }
+    };
 
     private boolean allAccFallingInThreshold (ArrayList<Float> arrayList) {
         boolean flag = true;
         for (float a : arrayList) {
-            if (!fallInThreshold(a)) {
+            if (!fallInThreshold(a, ACC_THRESHOLD)) {
                 flag = false;
             }
         }
         return flag;
     }
 
-    private boolean fallInThreshold (float a) {
-        return (-1*THRESHOLD < a && a < THRESHOLD);
+    private boolean fallInThreshold (float a, float threshold) {
+        return (-1*threshold < a && a < threshold);
+    }
+
+    private boolean velocityChangedDirection(float prevV, float currV) {
+        if (prevV <= 0 && currV >= 0)
+            return true;
+        else if (prevV >= 0 && currV <= 0)
+            return true;
+        else
+            return false;
     }
 
     private float getAverageAcceleration(ArrayList<Float> arrayList) {
@@ -142,7 +186,7 @@ public class Position3D {
         return z;
     }
 
-    public float getPrevV() {
-        return prevV;
+    public float getCurrV() {
+        return currV;
     }
 }
