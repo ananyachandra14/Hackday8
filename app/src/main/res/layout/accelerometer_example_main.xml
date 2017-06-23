@@ -12,4 +12,10 @@
         android:layout_centerVertical="true"
         android:text="Shake / Tilt Your Phone To Get Accelerometer Motion Alerts" />
 
+    <Button
+        android:id="@+id/renderButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Render" />
+
 </RelativeLayout>

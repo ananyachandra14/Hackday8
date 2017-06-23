@@ -1,9 +1,14 @@
 package com.example.ananyachandra.accelerometertest;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.app.Activity;
 import android.os.Handler;
+import android.support.annotation.Nullable;
+import android.util.AttributeSet;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
 public class MainActivity extends Activity implements AccelerometerListener {
@@ -16,12 +21,22 @@ public class MainActivity extends Activity implements AccelerometerListener {
 
     Position3D position3D;
 
+    Button render;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.accelerometer_example_main);
 
         position3D = new Position3D();
+
+        render = (Button) findViewById(R.id.renderButton);
+        render.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                position3D.send();
+            }
+        });
 
         // Check onResume Method to start accelerometer listener
     }

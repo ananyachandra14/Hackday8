@@ -8,6 +8,7 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.json.JSONException;
@@ -48,6 +49,8 @@ public class Position3D {
 
     final float ACC_THRESHOLD = 0.5f;
 
+    ArrayList<XYZ> sendCoordsList = new ArrayList<>();
+
     public Position3D() {
         X = new Coordinate();
         Y = new Coordinate();
@@ -67,9 +70,12 @@ public class Position3D {
             counter = 0;
             sendCounter++;
             System.out.println("X: " + X.getValue() * 100 + "\t\t Y: " + Y.getValue() * 100 + "\t\t Z: " + Z.getValue() * 100);
+            sendCoordsList.add(new XYZ(X.getValue(), Y.getValue(), Z.getValue()));
         }
-        if(sendCounter == 50) {
-            new RequestTask().execute("");
+        if(sendCounter == 30) {
+//            new RequestTask().execute("");
+            sendCounter = 0;
+//            sendCoordsList.clear();
         }
         counter++;
     }
@@ -120,6 +126,9 @@ public class Position3D {
                 }
 
                 C.setValue(C.getValue() + s);
+                if (C.getValue()*100 < -50 || C.getValue()*100 > 50) {
+                    C.setValue(0);
+                }
 //                System.out.println("X: " + C.getValue() * 100);
 
                 C.setPrevV(C.getCurrV());
@@ -195,57 +204,60 @@ public class Position3D {
         return gaussian;
     }
 
-    private void sendCoords() {
-//        HttpClient httpClient = new DefaultHttpClient();
-//        HttpPost httpPost = new HttpPost("https://172.20.164.13:1729/plot");
-//
+    public void sendCoords() {
+        HttpClient httpClient = new DefaultHttpClient();
+        HttpPost httpPost = new HttpPost("http://172.20.164.13:1729/plot");
+        httpPost.addHeader("Content-Type", "application/json");
+
 //        List<NameValuePair> nameValuePair = new ArrayList<NameValuePair>();
-//        nameValuePair.add(new BasicNameValuePair("Content-Type", "application/json"));
-//
-//        //Encoding POST data
-//        try {
-//            httpPost.setEntity(new UrlEncodedFormEntity(nameValuePair));
-//        } catch (UnsupportedEncodingException e)
-//        {
-//            e.printStackTrace();
-//        }
-//
-//        // Making HTTP Request
-//        try {
-//            HttpResponse response = httpClient.execute(httpPost);
-//        } catch (ClientProtocolException e) {
-//            // writing exception to log
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            // writing exception to log
-//            e.printStackTrace();
-//        }
+//        nameValuePair.add(new BasicNameValuePair("list", sendCoordsList.toString()));
 
-        try{
-            URL url = new URL("https://172.20.164.13:1729/plot");
-            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestMethod("POST");
-            connection.setDoInput(true);
-
-            JSONObject coords = new JSONObject();
-            try {
-                coords.put("X", X.getValue());
-                coords.put("Y", Y.getValue());
-                coords.put("Z", Z.getValue());
-
-                OutputStreamWriter wr= new OutputStreamWriter(connection.getOutputStream());
-                wr.write(coords.toString());
-
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-        }
-        catch (IOException e) {
-            // Writing exception to log
+        //Encoding POST data
+        try {
+            httpPost.setEntity(new StringEntity(sendCoordsList.toString(), "UTF8"));
+        } catch (UnsupportedEncodingException e)
+        {
             e.printStackTrace();
         }
+
+        // Making HTTP Request
+        try {
+            HttpResponse response = httpClient.execute(httpPost);
+        } catch (ClientProtocolException e) {
+            // writing exception to log
+            e.printStackTrace();
+        } catch (IOException e) {
+            // writing exception to log
+            e.printStackTrace();
+        }
+
+        sendCoordsList.clear();
+
+//        try {
+//            URL url = new URL("http://172.20.164.13:1729/plot");
+//            HttpURLConnection connection = (HttpURLConnection)url.openConnection();
+//            connection.setRequestProperty("Content-Type", "application/json");
+//            connection.setRequestMethod("POST");
+//            connection.setDoInput(true);
+//
+//            JSONObject coords = new JSONObject();
+//            try {
+//                coords.put("X", X.getValue());
+//                coords.put("Y", Y.getValue());
+//                coords.put("Z", Z.getValue());
+//
+//                OutputStreamWriter wr= new OutputStreamWriter(connection.getOutputStream());
+//                wr.write(coords.toString());
+//
+//            } catch (JSONException e) {
+//                e.printStackTrace();
+//            }
+//
+//        }
+//        catch (IOException e) {
+//            // Writing exception to log
+//            e.printStackTrace();
+//        }
     }
 
     class RequestTask extends AsyncTask<String, String, String> {
@@ -261,5 +273,9 @@ public class Position3D {
             super.onPostExecute(result);
             System.out.println("Coords Sent");
         }
+    }
+
+    public void send() {
+        new RequestTask().execute("");
     }
 }
