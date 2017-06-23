@@ -13,116 +13,112 @@ import java.util.List;
 
 //Positions in m in the real 3D world
 public class Position3D {
-    float x;
-    float y;
-    float z;
+//    float x;
+//    float y;
+//    float z;
+//
+//    float currV;
+//    float prevV;
 
-    float currV;
-    float prevV;
-
-    int direction = 0;
-    boolean isFollowUp = false;
-
-    Handler directionChangeHandler = new Handler();
-
-    ArrayList<Float> last10msAccList = new ArrayList<>(); //a of last ten 0.01s iterations
+    Coordinate X;
+    Coordinate Y;
+    Coordinate Z;
     int counter = 0;
     boolean updateAllowed = false;
 
-    ArrayList<Float> accsOfLast5Iterations = new ArrayList<>(); //last 5 avg_a of each 0.1s iteration
-
-    float ACC_THRESHOLD = 0.5f;
+    final float ACC_THRESHOLD = 0.5f;
 
     public Position3D() {
-        x = 0;
-        y = 0;
-        z = 0;
-        currV = 0;
+        X = new Coordinate();
+        Y = new Coordinate();
+        Z = new Coordinate();
     }
 
-    public void updateParameters(float a, float t) {
-        //every 0.01s
-        last10msAccList.add(a);
+    public void run (float ax, float ay, float az, float t) {
 
-//        System.out.println("a: " + avg_a + "\t v: " + currV);
+        updateParameters(ax, t, X);
+//        updateParameters(ay, t, Y);
+//        updateParameters(az, t, Z);
 
         if(counter == 10) {
             updateAllowed = true;
             counter = 0;
+//            System.out.println("X: " + X.getValue() * 100 + "\t\t Y: " + Y.getValue() * 100 + "\t\t Z: " + Z.getValue() * 100);
         }
         counter++;
+    }
+
+    private void updateParameters(float a, float t, Coordinate C) {
+        //every 0.01s
+        C.getLast10msAccList().add(a);
+
+//        System.out.println("a: " + avg_a + "\t v: " + currV);
 
         if (updateAllowed) {
             //every 0.1s
-            updateAllowed = false;
-            float thisIterationA = getMedianAcceleration(last10msAccList); //avg a of last 10 0.01 iterations
+            float thisIterationA = getMedianAcceleration(C.getLast10msAccList()); //avg a of last 10 0.01 iterations
 
 //            currV = 0.3f;
 
-            accsOfLast5Iterations.add(thisIterationA);
+            C.getAccsOfLast5Iterations().add(thisIterationA);
 
             // thisIterationA = smoothening algo
-            thisIterationA = getGuassianAcceleration(accsOfLast5Iterations);
-            //System.out.println("a: " + thisIterationA + "\t\t v: " + currV);
+            thisIterationA = getGuassianAcceleration(C.getAccsOfLast5Iterations());
 
             if (!(fallInThreshold(thisIterationA, ACC_THRESHOLD))) {
-//                System.out.println("a: " + thisIterationA + "\t\t v: " + currV);
+//                System.out.println("a: " + thisIterationA + "\t\t v: " + C.getCurrV() + "\t\t dir: " + direction + "\t\t follup: " + isFollowUp);
                 float s = 0;
 //                s = currV * t + 0.5f * thisIterationA * t * t;
 
                 if (thisIterationA > 0) {
-                    if (direction == -1) {
-                        isFollowUp = true;
+                    if (C.getDirection() == -1) {
+                        C.setFollowUp(true);
                     }
-                    if(!isFollowUp) {
-                        direction = 1;
+                    if(!C.isFollowUp()) {
+                        C.setDirection(1);
 //                        System.out.println("a: " + thisIterationA + "\t\t +ve");
-                        s = currV * t;
+                        s = C.getCurrV() * t;
 //                        s = currV * t + 0.5f * thisIterationA * t * t;
                     }
                 } else if (thisIterationA < 0){
-                    if (direction == 1) {
-                        isFollowUp = true;
+                    if (C.getDirection() == 1) {
+                        C.setFollowUp(true);
                     }
-                    if(!isFollowUp) {
-                        direction = -1;
+                    if(!C.isFollowUp()) {
+                        C.setDirection(-1);
 //                        System.out.println("a: " + thisIterationA + "\t\t -ve");
-                        s = currV * t;
+//                        System.out.println("s: " + s + "\t\t -ve");
+                        s = C.getCurrV() * t;
 //                        s = currV * t + 0.5f * thisIterationA * t * t;
                     }
                 }
 
-                x += s;
-                System.out.println("X: " + x * 100);
+                C.setValue(C.getValue() + s);
+                System.out.println("X: " + C.getValue() * 100);
 
-                prevV = currV;
-                currV = currV + thisIterationA * t;
-//                System.out.println("prevV: " + prevV + "\t\t currV: " + currV + "\t\t bool: " + velocityChangedDirection(prevV, currV));
-                if (velocityChangedDirection(prevV, currV))
-                    isFollowUp = false;
+                C.setPrevV(C.getCurrV());
+                C.setCurrV(C.getCurrV() + thisIterationA*t);
+//                System.out.println("prevV: " + C.getPrevV() + "\t\t currV: " + C.getCurrV() + "\t\t bool: " + velocityChangedDirection(C.getPrevV(), C.getCurrV()));
+                if (velocityChangedDirection(C.getPrevV(), C.getCurrV())) {
+                    C.setDirection(0);
+                    C.setFollowUp(false);
+                }
 
-            } else if (allAccFallingInThreshold(accsOfLast5Iterations)) {
-                currV = 0;
-                direction = 0;
-                isFollowUp = false;
+            } else if (allAccFallingInThreshold(C.getAccsOfLast5Iterations())) {
+                C.setCurrV(0);
+                C.setDirection(0);
+                C.setFollowUp(false);
             }
 
-            if(accsOfLast5Iterations.size() == 5) {
-                accsOfLast5Iterations.remove(0);
+            if(C.getAccsOfLast5Iterations().size() == 5) {
+                C.getAccsOfLast5Iterations().remove(0);
             }
         }
 
-        if (last10msAccList.size() == 10) {
-            last10msAccList.remove(0);
+        if (C.getLast10msAccList().size() == 10) {
+            C.getLast10msAccList().remove(0);
         }
     }
-
-    Runnable directionChangeRunnable = new Runnable() {
-        @Override
-        public void run() {
-
-        }
-    };
 
     private boolean allAccFallingInThreshold (ArrayList<Float> arrayList) {
         boolean flag = true;
@@ -171,22 +167,5 @@ public class Position3D {
         }
 
         return gaussian;
-    }
-
-
-    public float getX() {
-        return x;
-    }
-
-    public float getY() {
-        return y;
-    }
-
-    public float getZ() {
-        return z;
-    }
-
-    public float getCurrV() {
-        return currV;
     }
 }

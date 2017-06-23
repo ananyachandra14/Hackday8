@@ -43,7 +43,7 @@ public class MainActivity extends Activity implements AccelerometerListener {
         @Override
         public void run() {
 //            System.out.println("Ax: " + ax + "\t Ay: " + ay + "\t Az: " + az);
-            position3D.updateParameters(ax, 0.1f);
+            position3D.run(ax, ay, az, 0.1f);
             handler.postDelayed(this, 10);
         }
     };
