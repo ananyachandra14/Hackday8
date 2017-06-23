@@ -98,8 +98,10 @@ public class Position3D {
                 prevV = currV;
                 currV = currV + thisIterationA * t;
 //                System.out.println("prevV: " + prevV + "\t\t currV: " + currV + "\t\t bool: " + velocityChangedDirection(prevV, currV));
-                if (velocityChangedDirection(prevV, currV))
+                if (velocityChangedDirection(prevV, currV)) {
+                    direction = 0;
                     isFollowUp = false;
+                }
 
             } else if (allAccFallingInThreshold(accsOfLast5Iterations)) {
                 currV = 0;
